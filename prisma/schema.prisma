@@ -1,0 +1,95 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model LLM {
+  id              Int               @id @default(autoincrement())
+  name            String            @unique
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  experimentLinks ExperimentModel[]
+  graderResults   GraderResult[]
+  TestCaseResult  TestCaseResult[]
+}
+
+model Experiment {
+  id            Int                  @id @default(autoincrement())
+  name          String
+  systemPrompt  String
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  modelLinks    ExperimentModel[]
+  runs          ExperimentRun[]
+  testCaseLinks ExperimentTestCase[]
+}
+
+model TestCase {
+  id              Int                  @id @default(autoincrement())
+  userMessage     String
+  expectedOutput  String
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  experimentLinks ExperimentTestCase[]
+  results         TestCaseResult[]
+}
+
+model ExperimentRun {
+  id           Int              @id @default(autoincrement())
+  experimentId Int
+  startedAt    DateTime         @default(now())
+  endedAt      DateTime?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  experiment   Experiment       @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  results      TestCaseResult[]
+}
+
+model ExperimentTestCase {
+  id           Int        @id @default(autoincrement())
+  experimentId Int
+  testCaseId   Int
+  createdAt    DateTime   @default(now())
+  experiment   Experiment @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  testCase     TestCase   @relation(fields: [testCaseId], references: [id], onDelete: Cascade)
+}
+
+model ExperimentModel {
+  id           Int        @id @default(autoincrement())
+  experimentId Int
+  llmId        Int
+  createdAt    DateTime   @default(now())
+  experiment   Experiment @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  llm          LLM        @relation(fields: [llmId], references: [id], onDelete: Cascade)
+}
+
+model TestCaseResult {
+  id              Int            @id @default(autoincrement())
+  experimentRunId Int
+  testCaseId      Int
+  llmId           Int
+  response        String
+  duration        Float
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  evaluations     GraderResult[]
+  experimentRun   ExperimentRun  @relation(fields: [experimentRunId], references: [id], onDelete: Cascade)
+  llm             LLM            @relation(fields: [llmId], references: [id], onDelete: Cascade)
+  testCase        TestCase       @relation(fields: [testCaseId], references: [id], onDelete: Cascade)
+}
+
+model GraderResult {
+  id               Int            @id @default(autoincrement())
+  testCaseResultId Int
+  graderLLMId      Int
+  criterion        String
+  score            Float
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  graderLLM        LLM            @relation(fields: [graderLLMId], references: [id], onDelete: Cascade)
+  testCaseResult   TestCaseResult @relation(fields: [testCaseResultId], references: [id], onDelete: Cascade)
+}
